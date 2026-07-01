@@ -3,6 +3,7 @@ from src.pdf_parser import save_uploaded_file, extract_text_from_pdf
 from src.skill_extractor import extract_skills
 from src.ats_score import calculate_ats_score
 from src.charts import create_skill_chart
+from src.resume_suggestions import generate_suggestions
 
 # -----------------------------
 # Page Configuration
@@ -69,6 +70,11 @@ if analyze_button:
         resume_text,
         job_description
     )
+
+    suggestions = generate_suggestions(
+    score,
+    missing_skills
+)
 
     # -----------------------------
     # Dashboard
@@ -188,3 +194,13 @@ if analyze_button:
     st.write(f"**Matched Skills:** {len(matched_skills)}")
     st.write(f"**Missing Skills:** {len(missing_skills)}")
     st.write(f"**Final ATS Score:** {score:.1f}%")
+
+    st.divider()
+
+    st.subheader(" Resume Improvement Suggestions")
+
+    for suggestion in suggestions:
+       if suggestion.startswith("   -"):
+          st.markdown(suggestion)
+       else:
+          st.write(suggestion)
