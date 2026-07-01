@@ -4,6 +4,7 @@ from src.skill_extractor import extract_skills
 from src.ats_score import calculate_ats_score
 from src.charts import create_skill_chart
 from src.resume_suggestions import generate_suggestions
+from src.report_generator import generate_report
 
 # -----------------------------
 # Page Configuration
@@ -74,6 +75,14 @@ if analyze_button:
     suggestions = generate_suggestions(
     score,
     missing_skills
+)
+
+    report_path = generate_report(
+      uploaded_file.name,
+      score,
+      matched_skills,
+      missing_skills,
+      suggestions
 )
 
     # -----------------------------
@@ -204,3 +213,15 @@ if analyze_button:
           st.markdown(suggestion)
        else:
           st.write(suggestion)
+
+    st.divider()
+
+    st.subheader("📄 Download Report")
+
+    with open(report_path, "rb") as pdf_file:
+       st.download_button(
+         label="📥 Download Resume Analysis Report",
+         data=pdf_file,
+         file_name="Resume_Analysis_Report.pdf",
+         mime="application/pdf"
+    )
