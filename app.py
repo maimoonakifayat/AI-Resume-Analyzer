@@ -1,10 +1,13 @@
 import streamlit as st
+
 from src.pdf_parser import save_uploaded_file, extract_text_from_pdf
 from src.skill_extractor import extract_skills
 from src.ats_score import calculate_ats_score
 from src.charts import create_skill_chart
 from src.resume_suggestions import generate_suggestions
 from src.report_generator import generate_report
+from src.ai_feedback import generate_ai_feedback
+
 
 # -----------------------------
 # Page Configuration
@@ -22,7 +25,7 @@ st.title("📄 AI Resume Analyzer")
 
 st.markdown("""
 Analyze your resume against a job description and receive an ATS compatibility score,
-missing skills, and improvement suggestions.
+missing skills, and AI-powered improvement suggestions.
 """)
 
 st.divider()
@@ -60,10 +63,10 @@ if analyze_button:
     # Save uploaded resume
     saved_path = save_uploaded_file(uploaded_file)
 
-    # Extract resume text
+    # Extract text
     resume_text = extract_text_from_pdf(saved_path)
 
-    # Extract resume skills
+    # Extract skills
     skills = extract_skills(resume_text)
 
     # Calculate ATS score
@@ -72,18 +75,26 @@ if analyze_button:
         job_description
     )
 
+    # Generate suggestions
     suggestions = generate_suggestions(
-    score,
-    missing_skills
-)
+        score,
+        missing_skills
+    )
 
+    # Generate AI feedback
+    ai_feedback = generate_ai_feedback(
+        resume_text,
+        job_description
+    )
+
+    # Generate PDF report
     report_path = generate_report(
-      uploaded_file.name,
-      score,
-      matched_skills,
-      missing_skills,
-      suggestions
-)
+        uploaded_file.name,
+        score,
+        matched_skills,
+        missing_skills,
+        suggestions
+    )
 
     # -----------------------------
     # Dashboard
@@ -91,7 +102,6 @@ if analyze_button:
     col1, col2 = st.columns(2)
 
     with col1:
-
         st.success("Resume uploaded successfully!")
 
         st.subheader("Resume Information")
@@ -103,7 +113,6 @@ if analyze_button:
         st.write(f"**File Size:** {file_size:.2f} KB")
 
     with col2:
-
         st.subheader("ATS Compatibility")
 
         st.progress(score / 100)
@@ -134,12 +143,9 @@ if analyze_button:
     st.subheader("Skills Found")
 
     if skills:
-
         for skill in skills:
             st.success(skill)
-
     else:
-
         st.warning("No skills found.")
 
     st.divider()
@@ -150,29 +156,21 @@ if analyze_button:
     left, right = st.columns(2)
 
     with left:
-
         st.subheader("Matched Skills")
 
         if matched_skills:
-
             for skill in matched_skills:
                 st.success(skill)
-
         else:
-
             st.info("No matched skills.")
 
     with right:
-
-        st.subheader(" Missing Skills")
+        st.subheader("Missing Skills")
 
         if missing_skills:
-
             for skill in missing_skills:
                 st.error(skill)
-
         else:
-
             st.success("No missing skills!")
 
     st.divider()
@@ -189,13 +187,13 @@ if analyze_button:
 
     st.plotly_chart(
         chart,
-         width="stretch"
+        width="stretch"
     )
 
     st.divider()
 
     # -----------------------------
-    # Summary
+    # Analysis Summary
     # -----------------------------
     st.subheader("Analysis Summary")
 
@@ -206,22 +204,37 @@ if analyze_button:
 
     st.divider()
 
-    st.subheader(" Resume Improvement Suggestions")
+    # -----------------------------
+    # Resume Suggestions
+    # -----------------------------
+    st.subheader("💡 Resume Improvement Suggestions")
 
     for suggestion in suggestions:
-       if suggestion.startswith("   -"):
-          st.markdown(suggestion)
-       else:
-          st.write(suggestion)
+        if suggestion.startswith("   -"):
+            st.markdown(suggestion)
+        else:
+            st.write(suggestion)
 
     st.divider()
 
+    # -----------------------------
+    # AI Feedback
+    # -----------------------------
+    st.subheader("🤖 AI Resume Review")
+
+    st.markdown(ai_feedback)
+
+    st.divider()
+
+    # -----------------------------
+    # Download Report
+    # -----------------------------
     st.subheader("📄 Download Report")
 
     with open(report_path, "rb") as pdf_file:
-       st.download_button(
-         label="📥 Download Resume Analysis Report",
-         data=pdf_file,
-         file_name="Resume_Analysis_Report.pdf",
-         mime="application/pdf"
-    )
+        st.download_button(
+            label="📥 Download Resume Analysis Report",
+            data=pdf_file,
+            file_name="Resume_Analysis_Report.pdf",
+            mime="application/pdf"
+        )
