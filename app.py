@@ -7,6 +7,11 @@ from src.charts import create_skill_chart
 from src.resume_suggestions import generate_suggestions
 from src.report_generator import generate_report
 from src.ai_feedback import generate_ai_feedback
+from src.interview_coach import generate_interview_questions
+from src.mock_interview import (
+    generate_interview_question,
+    evaluate_interview_answer
+)
 
 
 # -----------------------------
@@ -27,7 +32,8 @@ st.title("📄 AI Resume Analyzer")
 st.markdown(
     """
     Analyze your resume against a job description and receive an ATS compatibility
-    score, missing skills, improvement suggestions, and AI-powered feedback.
+    score, missing skills, improvement suggestions, AI-powered feedback, and
+    personalized interview preparation.
     """
 )
 
@@ -49,6 +55,37 @@ job_description = st.text_area(
 )
 
 analyze_button = st.button("Analyze Resume")
+
+
+# -----------------------------
+# Initialize Session State
+# -----------------------------
+if "resume_text" not in st.session_state:
+    st.session_state.resume_text = ""
+
+if "job_description" not in st.session_state:
+    st.session_state.job_description = ""
+
+if "report_path" not in st.session_state:
+    st.session_state.report_path = ""
+
+if "analysis_done" not in st.session_state:
+    st.session_state.analysis_done = False
+
+if "interview_started" not in st.session_state:
+    st.session_state.interview_started = False
+
+if "current_question" not in st.session_state:
+    st.session_state.current_question = ""
+
+if "previous_questions" not in st.session_state:
+    st.session_state.previous_questions = []
+
+if "previous_answers" not in st.session_state:
+    st.session_state.previous_answers = []
+
+if "interview_evaluations" not in st.session_state:
+    st.session_state.interview_evaluations = []
 
 
 # -----------------------------
@@ -75,6 +112,10 @@ if analyze_button:
         st.error("Could not extract text from the uploaded PDF.")
         st.stop()
 
+    # Save important information in session state
+    st.session_state.resume_text = resume_text
+    st.session_state.job_description = job_description
+
     # Extract skills
     skills = extract_skills(resume_text)
 
@@ -98,6 +139,16 @@ if analyze_button:
         missing_skills,
         suggestions
     )
+
+    st.session_state.report_path = report_path
+    st.session_state.analysis_done = True
+
+    # Reset previous interview
+    st.session_state.interview_started = False
+    st.session_state.current_question = ""
+    st.session_state.previous_questions = []
+    st.session_state.previous_answers = []
+    st.session_state.interview_evaluations = []
 
     # -----------------------------
     # Dashboard
@@ -233,6 +284,7 @@ if analyze_button:
     st.subheader("🤖 AI Resume Review")
 
     with st.spinner("Analyzing your resume with Gemini..."):
+
         ai_feedback = generate_ai_feedback(
             resume_text,
             job_description
@@ -243,19 +295,197 @@ if analyze_button:
     else:
         st.markdown(ai_feedback)
 
+
+# ============================================================
+# AI INTERVIEW COACH
+# ============================================================
+
+if st.session_state.analysis_done:
+
     st.divider()
 
+    st.subheader("🎤 AI Interview Coach")
+
+    st.write(
+        "Practice for your interview with questions personalized "
+        "to your resume and the selected job."
+    )
+
+    interview_type = st.selectbox(
+        "Choose Interview Type",
+        [
+            "Technical Interview",
+            "HR Interview",
+            "Project Interview",
+            "Job-Specific Interview"
+        ],
+        key="interview_type"
+    )
+
     # -----------------------------
-    # Download Report
+    # Start Mock Interview
     # -----------------------------
+    if not st.session_state.interview_started:
+
+        if st.button("🎤 Start Mock Interview"):
+
+            with st.spinner(
+                "Preparing your personalized interview..."
+            ):
+
+                first_question = generate_interview_question(
+                    st.session_state.resume_text,
+                    st.session_state.job_description,
+                    interview_type
+                )
+
+            st.session_state.current_question = first_question
+            st.session_state.previous_questions = []
+            st.session_state.previous_answers = []
+            st.session_state.interview_evaluations = []
+            st.session_state.interview_started = True
+
+            st.rerun()
+
+    # -----------------------------
+    # Interview In Progress
+    # -----------------------------
+    if st.session_state.interview_started:
+
+        st.success("Mock interview started!")
+
+        question_number = (
+            len(st.session_state.previous_questions) + 1
+        )
+
+        st.subheader(
+            f"Question {question_number} of 5"
+        )
+
+        st.info(
+            st.session_state.current_question
+        )
+
+        answer = st.text_area(
+            "Your Answer",
+            height=180,
+            key=f"answer_{question_number}",
+            placeholder="Type your answer here..."
+        )
+
+        submit_answer = st.button(
+            "Submit Answer",
+            key=f"submit_{question_number}"
+        )
+
+        if submit_answer:
+
+            if not answer.strip():
+
+                st.warning(
+                    "Please write an answer before submitting."
+                )
+
+            else:
+
+                with st.spinner(
+                    "Evaluating your answer..."
+                ):
+
+                    evaluation = evaluate_interview_answer(
+                        st.session_state.current_question,
+                        answer,
+                        st.session_state.resume_text,
+                        st.session_state.job_description
+                    )
+
+                st.session_state.previous_questions.append(
+                    st.session_state.current_question
+                )
+
+                st.session_state.previous_answers.append(
+                    answer
+                )
+
+                st.session_state.interview_evaluations.append(
+                    evaluation
+                )
+
+                st.subheader("📊 AI Evaluation")
+
+                st.markdown(evaluation)
+
+                # -----------------------------
+                # Next Question
+                # -----------------------------
+                if len(st.session_state.previous_questions) < 5:
+
+                    with st.spinner(
+                        "Preparing your next question..."
+                    ):
+
+                        next_question = generate_interview_question(
+                            st.session_state.resume_text,
+                            st.session_state.job_description,
+                            interview_type,
+                            st.session_state.previous_questions,
+                            answer
+                        )
+
+                    st.session_state.current_question = next_question
+
+                    st.rerun()
+
+                else:
+
+                    st.success(
+                        "🎉 Mock interview completed!"
+                    )
+
+                    st.subheader(
+                        "📋 Interview Summary"
+                    )
+
+                    st.write(
+                        f"You completed "
+                        f"{len(st.session_state.previous_questions)} "
+                        f"interview questions."
+                    )
+
+                    if st.button(
+                        "🔄 Start New Interview"
+                    ):
+
+                        st.session_state.interview_started = False
+                        st.session_state.current_question = ""
+                        st.session_state.previous_questions = []
+                        st.session_state.previous_answers = []
+                        st.session_state.interview_evaluations = []
+
+                        st.rerun()
+
+
+# ============================================================
+# DOWNLOAD REPORT
+# ============================================================
+
+if st.session_state.analysis_done:
+
+    st.divider()
+
     st.subheader("📄 Download Report")
 
-    with open(report_path, "rb") as pdf_file:
-        pdf_data = pdf_file.read()
+    report_path = st.session_state.report_path
 
-    st.download_button(
-        label="📥 Download Resume Analysis Report",
-        data=pdf_data,
-        file_name="Resume_Analysis_Report.pdf",
-        mime="application/pdf"
-    )
+    if report_path and st.session_state.analysis_done:
+
+        with open(report_path, "rb") as pdf_file:
+
+            pdf_data = pdf_file.read()
+
+        st.download_button(
+            label="📥 Download Resume Analysis Report",
+            data=pdf_data,
+            file_name="Resume_Analysis_Report.pdf",
+            mime="application/pdf"
+        )
