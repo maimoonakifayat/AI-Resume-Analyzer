@@ -18,17 +18,21 @@ st.set_page_config(
     layout="wide"
 )
 
+
 # -----------------------------
 # Title
 # -----------------------------
 st.title("📄 AI Resume Analyzer")
 
-st.markdown("""
-Analyze your resume against a job description and receive an ATS compatibility score,
-missing skills, and AI-powered improvement suggestions.
-""")
+st.markdown(
+    """
+    Analyze your resume against a job description and receive an ATS compatibility
+    score, missing skills, improvement suggestions, and AI-powered feedback.
+    """
+)
 
 st.divider()
+
 
 # -----------------------------
 # User Input
@@ -45,6 +49,7 @@ job_description = st.text_area(
 )
 
 analyze_button = st.button("Analyze Resume")
+
 
 # -----------------------------
 # Analyze Resume
@@ -63,8 +68,12 @@ if analyze_button:
     # Save uploaded resume
     saved_path = save_uploaded_file(uploaded_file)
 
-    # Extract text
+    # Extract text from resume
     resume_text = extract_text_from_pdf(saved_path)
+
+    if not resume_text.strip():
+        st.error("Could not extract text from the uploaded PDF.")
+        st.stop()
 
     # Extract skills
     skills = extract_skills(resume_text)
@@ -75,16 +84,10 @@ if analyze_button:
         job_description
     )
 
-    # Generate suggestions
+    # Generate improvement suggestions
     suggestions = generate_suggestions(
         score,
         missing_skills
-    )
-
-    # Generate AI feedback
-    ai_feedback = generate_ai_feedback(
-        resume_text,
-        job_description
     )
 
     # Generate PDF report
@@ -109,7 +112,6 @@ if analyze_button:
         st.write(f"**File Name:** {uploaded_file.name}")
 
         file_size = uploaded_file.size / 1024
-
         st.write(f"**File Size:** {file_size:.2f} KB")
 
     with col2:
@@ -131,7 +133,7 @@ if analyze_button:
 
     st.text_area(
         "Resume Content",
-        resume_text,
+        value=resume_text,
         height=300
     )
 
@@ -151,7 +153,7 @@ if analyze_button:
     st.divider()
 
     # -----------------------------
-    # Matched & Missing Skills
+    # Matched and Missing Skills
     # -----------------------------
     left, right = st.columns(2)
 
@@ -176,7 +178,7 @@ if analyze_button:
     st.divider()
 
     # -----------------------------
-    # Pie Chart
+    # Skill Match Chart
     # -----------------------------
     st.subheader("Skill Match Analysis")
 
@@ -187,7 +189,7 @@ if analyze_button:
 
     st.plotly_chart(
         chart,
-        width="stretch"
+        use_container_width=True
     )
 
     st.divider()
@@ -197,9 +199,17 @@ if analyze_button:
     # -----------------------------
     st.subheader("Analysis Summary")
 
-    st.write(f"**Resume Skills Found:** {len(skills)}")
-    st.write(f"**Matched Skills:** {len(matched_skills)}")
-    st.write(f"**Missing Skills:** {len(missing_skills)}")
+    summary_col1, summary_col2, summary_col3 = st.columns(3)
+
+    with summary_col1:
+        st.metric("Resume Skills", len(skills))
+
+    with summary_col2:
+        st.metric("Matched Skills", len(matched_skills))
+
+    with summary_col3:
+        st.metric("Missing Skills", len(missing_skills))
+
     st.write(f"**Final ATS Score:** {score:.1f}%")
 
     st.divider()
@@ -222,7 +232,16 @@ if analyze_button:
     # -----------------------------
     st.subheader("🤖 AI Resume Review")
 
-    st.markdown(ai_feedback)
+    with st.spinner("Analyzing your resume with Gemini..."):
+        ai_feedback = generate_ai_feedback(
+            resume_text,
+            job_description
+        )
+
+    if ai_feedback.startswith("❌"):
+        st.error(ai_feedback)
+    else:
+        st.markdown(ai_feedback)
 
     st.divider()
 
@@ -232,9 +251,11 @@ if analyze_button:
     st.subheader("📄 Download Report")
 
     with open(report_path, "rb") as pdf_file:
-        st.download_button(
-            label="📥 Download Resume Analysis Report",
-            data=pdf_file,
-            file_name="Resume_Analysis_Report.pdf",
-            mime="application/pdf"
-        )
+        pdf_data = pdf_file.read()
+
+    st.download_button(
+        label="📥 Download Resume Analysis Report",
+        data=pdf_data,
+        file_name="Resume_Analysis_Report.pdf",
+        mime="application/pdf"
+    )
